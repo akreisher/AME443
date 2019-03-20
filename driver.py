@@ -1,5 +1,4 @@
 from importlib import reload
-#Import and reload
 import AME443Utility.FreeResponse
 AME443Utility.FreeResponse = reload(AME443Utility.FreeResponse)
 from AME443Utility.FreeResponse import FreeResponse
@@ -27,6 +26,7 @@ sweepList = [SineSweep(file,4) for file in os.listdir('Week 4') if file.split('_
 constList = [ConstSine(file,4) for file in os.listdir('Week 4') if file.split('_')[0]=='Const']
 
 #free484 = [obj for obj in freeList if int(obj.mass*1000)==484]
+
 #free969 = [obj for obj in freeList if obj not in free484]
 
 

@@ -23,28 +23,17 @@ import os, csv
 
 print('\nTest Script')
 print('-----------')
+path = "Week7/good/"
+files = os.listdir(path)
 
-stepOL484File = 'c:/Users/Alex/Documents/AME443/Week 3/Step_m484_k3k3_r1.5_1.csv'
-stepOL969File = 'c:/Users/Alex/Documents/AME443/Week 3/Step_m969_k3k3_r1.5_1.csv'
-stepCLFile = 'c:/Users/Alex/Documents/AME443/Week 7/Step_m484_k3k3_r1000_cl_1.csv'
-
-test = 'Step_m484_k3k3_r1000_cl_1.csv'
-
-test.split
-
-stepOL484 = StepResponse(stepOL484File,20)
-stepOL969 = StepResponse(stepOL969File,20)
-stepOL484.SystemID('fit')
-stepOL969.SystemID('fit')
-stepOL484.parameters(stepOL969)
-
-m = stepOL484.m
-print(m)
-
-stepCL = StepResponse(stepCLFile)
-stepCL.SystemID('fit')
-print(stepCL.xInf)
-
-#exec(open("test.py").read(), globals())
-
-
+for file in files:
+    print(file)
+runs = (StepResponse(path+file,5) for file in files if file.split('_')[0]=="Step")
+for run in runs:
+    
+    run.plot()
+    run.SystemID(method = 'overshoot')
+    print(file)
+    print("ts = ", run.tSettling)
+    print("overhsoot = ", run.overshoot)
+    print()    
