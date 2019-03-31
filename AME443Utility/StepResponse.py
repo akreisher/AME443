@@ -6,21 +6,49 @@ from scipy.optimize import curve_fit, fsolve
 import os, sys, math
 
 class StepResponse:
-    def __init__(self,path,cutoff=None):
+    def __init__(self,path,cutoff=None,tdiv=1):
         self.path = path;
         self.name = path.split('/')[-1]
+        self.mass = ''
+        self.string = ''
+        self.stepInput = ''
+        self.Kp = '0'
+        self.Ki = '0'
+        self.Kd = '0'
+
+        argdict ={
+            'm'  : 'mass',
+            'r'  : 'stepInput',
+            'Kp' : 'Kp',
+            'KP' : 'Kp',
+            'Ki' : 'Ki',
+            'KI' : 'Ki',
+            'Kd' : 'Kd',
+            'KD' : 'Kd'
+        }
         fileName = self.name
         #Parse experiment paramters from file name
         args = fileName.split("_")
-        m = next(s for s in args if s[0]=='m')
-        self.mass = float(m[1:])/1000
+        self.response = args[0]
+        for arg in args[1:-1]:
+            if arg[0] in argdict:
+                setattr(self, argdict[arg[0]], arg[1:])
+            if arg[:2] in argdict:
+                setattr(self, argdict[arg[:2]], arg[2:])
+
+        self.mass = float(self.mass)/1000
         self.springs = next(s for s in args if s[0] == 'k')
-        self.stepInput = float(next(s for s in args if s[0]=='r')[1:])
+        self.stepInput = float(self.stepInput)
+
+        self.Kp = float(self.Kp)
+        self.Kd = float(self.Kd)
+        self.Ki = float(self.Ki)
+
         self.runNum = int((args[-1].split("."))[0])
         #import all data into numpy array
         self.rawData = pd.read_csv(path)
-        t = self.rawData[["time"]].values
-        pos = self.rawData[["actpos1"]].values
+        t = np.ndarray.flatten(self.rawData[["time"]].values)
+        pos = np.ndarray.flatten(self.rawData[["actpos1"]].values)
         pks,_ = find_peaks(pos)
         #Check if data was already processed
         self.pPath = "/".join(path.split('/')[:-1])+"/PROCESSED/P"+fileName;
@@ -45,7 +73,7 @@ class StepResponse:
 
             #Close plot
             plt.ioff()
-            plt.close()
+            Plt.close()
 
             #Store user input for future use
             with open(self.pPath,'w') as pfile:
@@ -53,33 +81,32 @@ class StepResponse:
 
         #Store cutoff data
 
-        self.time = (t)[t<end]/10
+        self.time = (t)[t<end]/tdiv
+
         self.pos = (pos)[0:len(self.time)]
-        self.CE = self.rawData[["iqcmd1"]]
-        self.peaks = pks[np.logical_and(pks<len(self.time), np.abs(pos[pks]-self.pos[-1])>0.01*self.pos[-1])]
-        
+        self.CE = np.ndarray.flatten(self.rawData[["iqcmd1"]].values)[0:len(self.time)]
+        self.peaks = pks[pks<len(self.time)]
+
         #Default values
         self.omegaN = None
         self.zeta = None
         self.m = None
         self.K_HW = None
-        
-    def SystemID(self, method='fit',toprint = False,retLabel = False):
-        t = self.time
+
         pos = self.pos
+        t = self.time
         pks = self.peaks
 
-        label = None
-
-        #Steady State
+         #Steady State
         xInf = pos[-1]
         self.xInf = xInf
-        self.ess = (xInf-self.stepInput)/self.stepInput
+        self.ess =100* abs(xInf-self.stepInput)/self.stepInput
 
         # Overshoot
-        xMax = pos[pks[0]]
+        xMax = max(pos)
+        self.tPeak = t[np.argmax(pos)]
         self.overshoot = ((xMax-xInf)/xInf)*100;
-        
+
         #rise time
         i = 0
         while pos[i]<xInf and i<len(t)-1:
@@ -92,6 +119,17 @@ class StepResponse:
         while abs(pos[i]-xInf) < 0.02*xInf and i > 0:
             i = i-1
         self.tSettling = t[i]
+
+
+    def SystemID(self, method='fit',toprint = False,retLabel = False):
+        t = self.time
+        pos = self.pos
+        pks = self.peaks[:-2]
+        if len(pks) > 3:
+            pks = pks[:-1]
+        xInf = self.xInf
+        xMax = pos[pks[0]]
+        label = None
 
         #Calculate omegaD from period
         T = np.mean(np.diff(t[pks[0:4]]))
@@ -202,7 +240,7 @@ class StepResponse:
         if show:
             plt.show()
 
-  
+
     def parameters(self,run):
         if run.mass == self.mass:
             raise ValueError("Mass of other run must be different!");
